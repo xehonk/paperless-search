@@ -112,8 +112,6 @@ class Retriever:
         """Perform vector similarity search in Qdrant with automatic deduplication by document ID"""
         try:
             # Use search_groups to get one result per document (grouped by paperless_id)
-            from qdrant_client.models import SearchRequest
-
             logger.info(f"Searching Qdrant with filter: {qdrant_filter}, limit={top_k}")
             search_result = self.qdrant_client.search_groups(
                 collection_name=self.collection_name,

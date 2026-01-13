@@ -13,6 +13,9 @@ from providers import BaseProvider
 
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_SENTENCE_LENGTH = 200  # Maximum sentence length before truncation in highlights
+
 # Load prompt templates
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 
@@ -144,7 +147,7 @@ class QueryProcessor:
             # Check if any query term appears in sentence
             if any(term in sentence_lower for term in query_terms):
                 # Truncate long sentences
-                if len(sentence) > 200:
+                if len(sentence) > MAX_SENTENCE_LENGTH:
                     # Find the query term position
                     for term in query_terms:
                         if term in sentence_lower:

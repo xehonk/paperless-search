@@ -58,7 +58,7 @@ class GoogleProvider(BaseProvider):
 
         except Exception as e:
             logger.error(f"Failed to get Google embedding: {e}")
-            return None
+            raise
 
     def get_embeddings_batch(
         self,

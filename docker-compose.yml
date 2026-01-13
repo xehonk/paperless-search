@@ -116,7 +116,3 @@ services:
 networks:
   qdrant-network:
     driver: bridge
-
-volumes:
-  qdrant-data:
-  state-data:

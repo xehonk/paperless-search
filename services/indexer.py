@@ -5,6 +5,7 @@ Document indexer for Paperless-ngx to Qdrant
 import logging
 import time
 import json
+import hashlib
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
@@ -20,6 +21,15 @@ from models import DocumentChunk, PaperlessDocument, IndexingStats
 from providers import BaseProvider, EmbeddingTaskType
 
 logger = logging.getLogger(__name__)
+
+# Constants
+MIN_CHUNK_SIZE = 100  # Minimum meaningful chunk size for vector search
+UPSERT_BATCH_SIZE = 20  # Batch size for Qdrant upserts to avoid payload size limits
+
+
+def stable_hash(text: str) -> int:
+    """Generate stable positive integer hash using MD5"""
+    return int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
 
 
 def iso_to_timestamp(iso_date: Optional[str]) -> Optional[int]:
@@ -356,21 +366,20 @@ class DocumentIndexer:
 
         chunks = []
         start = 0
-        min_chunk_size = 100  # Minimum meaningful chunk size
 
         while start < len(text):
             end = start + self.chunk_size
             chunk = text[start:end]
 
             # Only include chunks that are large enough to be meaningful
-            # Tiny final chunks (< min_chunk_size) create noise in vector search
-            if len(chunk) >= min_chunk_size:
+            # Tiny final chunks (< MIN_CHUNK_SIZE) create noise in vector search
+            if len(chunk) >= MIN_CHUNK_SIZE:
                 chunks.append(chunk)
             elif len(chunks) > 0:
                 # Merge tiny final chunk with previous chunk instead of discarding
                 chunks[-1] = chunks[-1] + chunk
             else:
-                # Edge case: first chunk is tiny (shouldn't happen with min_chunk_size=100)
+                # Edge case: first chunk is tiny (shouldn't happen with MIN_CHUNK_SIZE)
                 chunks.append(chunk)
 
             start += self.chunk_size - self.chunk_overlap
@@ -499,7 +508,7 @@ class DocumentIndexer:
             for chunk, embedding in zip(chunks, embeddings):
                 if embedding:
                     point = PointStruct(
-                        id=hash(chunk.id) & 0x7FFFFFFF,  # Convert to positive int
+                        id=stable_hash(chunk.id),
                         vector=embedding,
                         payload=chunk.dict()
                     )
@@ -507,14 +516,13 @@ class DocumentIndexer:
 
             # Upsert to Qdrant in batches to avoid payload size limits
             if points:
-                batch_size = 20  # Reduced batch size for large documents with many chunks
-                total_batches = (len(points) + batch_size - 1) // batch_size
+                total_batches = (len(points) + UPSERT_BATCH_SIZE - 1) // UPSERT_BATCH_SIZE
 
                 logger.info(f"Upserting {len(points)} points for document {paperless_id} in {total_batches} batch(es)")
 
-                for i in range(0, len(points), batch_size):
-                    batch = points[i:i + batch_size]
-                    batch_num = (i // batch_size) + 1
+                for i in range(0, len(points), UPSERT_BATCH_SIZE):
+                    batch = points[i:i + UPSERT_BATCH_SIZE]
+                    batch_num = (i // UPSERT_BATCH_SIZE) + 1
 
                     logger.debug(f"Upserting batch {batch_num}/{total_batches} ({len(batch)} points)")
 

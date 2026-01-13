@@ -59,11 +59,11 @@ class OllamaProvider(BaseProvider):
 
             if embeddings and len(embeddings) > 0:
                 return embeddings[0]
-            return None
+            raise ValueError("Ollama API returned empty embeddings response")
 
         except Exception as e:
             logger.error(f"Failed to get Ollama embedding: {e}")
-            return None
+            raise
 
     def get_embeddings_batch(
         self,

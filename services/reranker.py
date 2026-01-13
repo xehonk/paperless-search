@@ -15,6 +15,9 @@ from providers import BaseProvider, EmbeddingTaskType
 
 logger = logging.getLogger(__name__)
 
+# Constants
+RERANK_SCORE_VARIANCE_THRESHOLD = 0.01  # Minimum variance indicating reranking is working
+
 # Load prompt templates
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 
@@ -283,7 +286,7 @@ class Reranker:
         # Check if all scores are the same (indicates reranking not working)
         if len(successful_scores) > 5:
             score_variance = max(successful_scores) - min(successful_scores)
-            if score_variance < 0.01:  # All scores nearly identical
+            if score_variance < RERANK_SCORE_VARIANCE_THRESHOLD:  # All scores nearly identical
                 logger.warning("Reranking scores show no variance, likely not working properly")
                 # Keep the scores but warn the user
 

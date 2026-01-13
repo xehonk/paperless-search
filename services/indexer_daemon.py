@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 # Configuration from environment
 PAPERLESS_URL = os.getenv('PAPERLESS_URL', 'http://paperless:8000')
 PAPERLESS_API_KEY = os.getenv('PAPERLESS_API_KEY')
+
+# Validate required configuration
+if not PAPERLESS_API_KEY:
+    logger.error("PAPERLESS_API_KEY environment variable is required")
+    sys.exit(1)
+
 QDRANT_URL = os.getenv('QDRANT_URL', 'http://qdrant:6333')
 QDRANT_COLLECTION = os.getenv('QDRANT_COLLECTION', 'documents')
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://host.docker.internal:11434')

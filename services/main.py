@@ -31,6 +31,14 @@ logger = logging.getLogger(__name__)
 
 # Configuration from environment
 PAPERLESS_URL = os.getenv('PAPERLESS_URL', 'http://localhost:8000')
+PAPERLESS_API_KEY = os.getenv('PAPERLESS_API_KEY')
+
+# Validate required configuration
+if not PAPERLESS_API_KEY:
+    logger.error("PAPERLESS_API_KEY environment variable is required")
+    import sys
+    sys.exit(1)
+
 QDRANT_URL = os.getenv('QDRANT_URL', 'http://qdrant:6333')
 QDRANT_COLLECTION = os.getenv('QDRANT_COLLECTION', 'documents')
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://host.docker.internal:11434')
@@ -441,7 +449,7 @@ async def get_paperless_tags():
         while True:
             response = requests.get(
                 f"{PAPERLESS_URL}/api/tags/?page={page}&page_size=100",
-                headers={"Authorization": f"Token {os.getenv('PAPERLESS_API_KEY', '')}"},
+                headers={"Authorization": f"Token {PAPERLESS_API_KEY}"},
                 timeout=10
             )
             response.raise_for_status()
@@ -480,7 +488,7 @@ async def get_paperless_correspondents():
         while True:
             response = requests.get(
                 f"{PAPERLESS_URL}/api/correspondents/?page={page}&page_size=100",
-                headers={"Authorization": f"Token {os.getenv('PAPERLESS_API_KEY', '')}"},
+                headers={"Authorization": f"Token {PAPERLESS_API_KEY}"},
                 timeout=10
             )
             response.raise_for_status()
