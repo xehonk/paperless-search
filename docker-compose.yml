@@ -1,0 +1,122 @@
+
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - qdrant-network
+
+  # Search Web UI (API + Web Interface)
+  search-web:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    container_name: paperless-search-web
+    command: python main.py
+    ports:
+      - "7702:8080"  # FastAPI + Web UI
+    environment:
+      # Paperless Configuration
+      - PAPERLESS_URL=${PAPERLESS_URL}
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY}
+
+      # Qdrant Configuration
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-documents}
+
+      # Provider Configuration
+      - PROVIDER=${PROVIDER:-ollama}
+
+      # Ollama Configuration (for PROVIDER=ollama)
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      - RERANK_MODEL=${RERANK_MODEL:-bge-reranker-v2-m3}
+      - LLM_MODEL=${LLM_MODEL:-llama3.2:latest}
+
+      # Google AI Configuration (for PROVIDER=google)
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_EMBEDDING_MODEL=${GOOGLE_EMBEDDING_MODEL:-gemini-embedding-001}
+      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3-flash-preview}
+
+      # Search Configuration
+      - DEFAULT_QUERY_LANGUAGE=${DEFAULT_QUERY_LANGUAGE:-English}
+      - ENABLE_QUERY_EXPANSION=${ENABLE_QUERY_EXPANSION:-true}
+      - ENABLE_RERANKING=${ENABLE_RERANKING:-true}
+      - RETRIEVAL_TOP_K=${RETRIEVAL_TOP_K:-50}
+      - RERANK_TOP_K=${RERANK_TOP_K:-10}
+      - HYBRID_ALPHA=${HYBRID_ALPHA:-0.5}
+      - RERANK_INFLUENCE=${RERANK_INFLUENCE:-0.2}
+
+      # Reranking Configuration
+      - RERANK_MAX_WORKERS=${RERANK_MAX_WORKERS:-20}
+      - RERANK_DEDICATED_MAX_TOKENS=${RERANK_DEDICATED_MAX_TOKENS:-10}
+      - RERANK_LLM_MAX_TOKENS=${RERANK_LLM_MAX_TOKENS:-500}
+      - RERANK_EXPLAIN_MAX_TOKENS=${RERANK_EXPLAIN_MAX_TOKENS:-1500}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+    networks:
+      - qdrant-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Search Indexer (Background Document Indexing)
+  search-indexer:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    container_name: paperless-search-indexer
+    command: python indexer_daemon.py
+    volumes:
+      - ./data/state:/app/data
+    environment:
+      # Paperless Configuration
+      - PAPERLESS_URL=${PAPERLESS_URL}
+      - PAPERLESS_API_KEY=${PAPERLESS_API_KEY}
+
+      # Qdrant Configuration
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-documents}
+
+      # Provider Configuration
+      - PROVIDER=${PROVIDER:-ollama}
+
+      # Ollama Configuration (for PROVIDER=ollama)
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+
+      # Google AI Configuration (for PROVIDER=google)
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_EMBEDDING_MODEL=${GOOGLE_EMBEDDING_MODEL:-gemini-embedding-001}
+      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3-flash-preview}
+
+      # Indexing Configuration
+      - POLL_INTERVAL_MINUTES=${POLL_INTERVAL_MINUTES:-5}
+      - REQUIRE_REVIEWED=${REQUIRE_REVIEWED:-true}
+      - CHUNK_SIZE=${CHUNK_SIZE:-512}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-50}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+    networks:
+      - qdrant-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  qdrant-network:
+    driver: bridge
+
+volumes:
+  qdrant-data:
+  state-data:

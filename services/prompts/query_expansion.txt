@@ -1,0 +1,14 @@
+Expand this search query by adding 2-3 relevant synonyms or related terms.
+
+Query: "{query}"
+Language: {language}
+
+Rules:
+- Add 2-3 synonyms or related terms in the SAME language
+- Keep it concise - don't add unnecessary words
+- Don't repeat similar variations of the same word
+
+Respond with JSON only:
+{{
+  "expanded_query": "original terms plus synonyms"
+}}
