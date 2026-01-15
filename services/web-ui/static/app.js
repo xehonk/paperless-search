@@ -153,8 +153,8 @@ function renderTags(tags) {
         const badge = document.createElement('span');
         badge.className = 'tag-badge';
         badge.textContent = tag.name;
-        badge.style.backgroundColor = tag.colour;
-        badge.style.color = getContrastColor(tag.colour);
+        badge.style.backgroundColor = tag.color;
+        badge.style.color = getContrastColor(tag.color);
 
         const count = document.createElement('span');
         count.className = 'doc-count';
@@ -329,8 +329,7 @@ function buildFilters() {
     // Tags filter (multiple selection with All/Any logic)
     if (selectedTags.size > 0) {
         filters.tags = Array.from(selectedTags);
-        // Note: tagLogic ('all' vs 'any') can be used by backend if supported
-        // For now, backend treats tags as OR logic (any)
+        filters.tag_logic = tagLogic;  // 'any' or 'all'
     }
 
     // Correspondent filter

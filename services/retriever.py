@@ -111,11 +111,12 @@ class Retriever:
     ) -> List[SearchResult]:
         """Perform vector similarity search in Qdrant with automatic deduplication by document ID"""
         try:
-            # Use search_groups to get one result per document (grouped by paperless_id)
+            # Use query_points_groups to get one result per document (grouped by paperless_id)
+            # Note: In qdrant-client 1.16+, search_groups was replaced with query_points_groups
             logger.info(f"Searching Qdrant with filter: {qdrant_filter}, limit={top_k}")
-            search_result = self.qdrant_client.search_groups(
+            search_result = self.qdrant_client.query_points_groups(
                 collection_name=self.collection_name,
-                query_vector=query_embedding,
+                query=query_embedding,
                 query_filter=qdrant_filter,
                 limit=top_k,  # Number of unique documents to return
                 group_by="paperless_id",  # Group by document ID
@@ -125,7 +126,7 @@ class Retriever:
 
             logger.info(f"Qdrant returned {len(search_result.groups)} groups")
             results = []
-            # search_groups returns groups, each containing the best chunk for that document
+            # query_points_groups returns groups, each containing the best chunk for that document
             for group in search_result.groups:
                 # Each group has a list of hits (we requested group_size=1, so just one)
                 if group.hits:
@@ -196,15 +197,27 @@ class Retriever:
         # Tags filter
         if 'tags' in extracted_filters:
             tags = extracted_filters['tags']
-            logger.info(f"Processing tags filter: {tags}")
+            tag_logic = extracted_filters.get('tag_logic', 'any')  # Default to 'any'
+            logger.info(f"Processing tags filter: {tags} with logic: {tag_logic}")
+
             if isinstance(tags, list) and tags:
-                # Match any of the tags
-                tag_condition = FieldCondition(
-                    key="tags",
-                    match=MatchAny(any=tags)
-                )
-                logger.info(f"Adding tag condition: key='tags', match=MatchAny(any={tags})")
-                conditions.append(tag_condition)
+                if tag_logic == 'all':
+                    # Match ALL tags - each tag must be present
+                    for tag in tags:
+                        tag_condition = FieldCondition(
+                            key="tags",
+                            match=MatchAny(any=[tag])
+                        )
+                        logger.info(f"Adding tag condition (all): key='tags', match=MatchAny(any=[{tag}])")
+                        conditions.append(tag_condition)
+                else:
+                    # Match ANY of the tags (default)
+                    tag_condition = FieldCondition(
+                        key="tags",
+                        match=MatchAny(any=tags)
+                    )
+                    logger.info(f"Adding tag condition (any): key='tags', match=MatchAny(any={tags})")
+                    conditions.append(tag_condition)
 
         # Correspondent filter
         if 'correspondent_name' in extracted_filters:

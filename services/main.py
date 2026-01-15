@@ -120,6 +120,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="web-ui/static"), name="static")
+
 # Setup templates
 templates = Jinja2Templates(directory="web-ui")
 
@@ -459,7 +462,7 @@ async def get_paperless_tags():
             tags = [{
                 "id": tag["id"],
                 "name": tag["name"],
-                "colour": tag.get("colour", "#808080"),
+                "color": tag.get("color", "#808080"),
                 "document_count": tag.get("document_count", 0)
             } for tag in data.get("results", [])]
 
