@@ -193,25 +193,3 @@ class GoogleProvider(BaseProvider):
         except Exception as e:
             logger.warning(f"Could not list Google models: {e}")
             return []
-
-    def get_embedding_dimensions(self) -> int:
-        """
-        Get embedding dimensions.
-
-        gemini-embedding-001 produces 3072-dimensional vectors
-        """
-        # Known dimension for gemini-embedding-001
-        if 'gemini-embedding-001' in self.embedding_model:
-            return 3072
-
-        # Fallback: test with actual embedding
-        logger.info("Testing Google embedding dimensions...")
-        test_embedding = self.get_embedding("test")
-        if test_embedding:
-            dims = len(test_embedding)
-            logger.info(f"Detected Google embedding dimensions: {dims}")
-            return dims
-
-        # Default fallback (gemini-embedding-001 standard)
-        logger.warning(f"Unknown embedding model {self.embedding_model}, defaulting to 3072 dimensions")
-        return 3072

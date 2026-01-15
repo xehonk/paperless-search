@@ -85,16 +85,18 @@ class DocumentIndexer:
         self.max_retries = 10
         self.retry_backoff_minutes = [0, 5, 15, 60, 240, 720]  # 0min, 5min, 15min, 1hr, 4hr, 12hr
 
-    def initialize_collection(self, vector_size: int):
-        """Initialize or update Qdrant collection"""
+    def _ensure_collection_exists(self, vector_size: int):
+        """Lazily initialize Qdrant collection on first use"""
         try:
             # Check if collection exists
             collections = self.qdrant_client.get_collections().collections
             collection_names = [c.name for c in collections]
 
             if self.collection_name in collection_names:
-                logger.info(f"Collection '{self.collection_name}' already exists")
+                logger.debug(f"Collection '{self.collection_name}' already exists")
                 return
+
+            logger.info(f"Creating collection '{self.collection_name}' with vector size {vector_size}")
 
             # Create new collection
             self.qdrant_client.create_collection(
@@ -133,10 +135,10 @@ class DocumentIndexer:
                 field_schema="integer"  # Use integer for Unix timestamps
             )
 
-            logger.info(f"Collection '{self.collection_name}' created successfully")
+            logger.info(f"Collection '{self.collection_name}' created successfully with {vector_size}-dimensional vectors")
 
         except Exception as e:
-            logger.error(f"Failed to initialize collection: {e}")
+            logger.error(f"Failed to ensure collection exists: {e}")
             raise
 
     def poll_and_index(self) -> IndexingStats:
@@ -483,8 +485,20 @@ class DocumentIndexer:
     def _index_chunks(self, chunks: List[DocumentChunk]):
         """Generate embeddings and index chunks in Qdrant"""
         try:
-            # Delete existing chunks for this document
             paperless_id = chunks[0].paperless_id
+
+            # Generate embeddings for all chunks
+            texts = [chunk.content for chunk in chunks]
+            embeddings = self._generate_embeddings_batch(texts)
+
+            # Ensure collection exists (lazy initialization using actual embedding dimensions)
+            if embeddings and embeddings[0]:
+                vector_size = len(embeddings[0])
+                self._ensure_collection_exists(vector_size)
+            else:
+                raise Exception("No valid embeddings generated, cannot initialize collection")
+
+            # Delete existing chunks for this document
             from qdrant_client.models import Filter, FieldCondition, MatchValue
 
             self.qdrant_client.delete(
@@ -498,10 +512,6 @@ class DocumentIndexer:
                     ]
                 )
             )
-
-            # Generate embeddings for all chunks
-            texts = [chunk.content for chunk in chunks]
-            embeddings = self._generate_embeddings_batch(texts)
 
             # Create points
             points = []

@@ -181,32 +181,3 @@ class OllamaProvider(BaseProvider):
         except Exception as e:
             logger.warning(f"Could not list Ollama models: {e}")
             return []
-
-    def get_embedding_dimensions(self) -> int:
-        """Get embedding dimensions by testing or using known model dimensions"""
-        # Try to get actual dimensions by testing
-        test_embedding = self.get_embedding("test")
-        if test_embedding:
-            dims = len(test_embedding)
-            logger.info(f"Detected Ollama embedding dimensions: {dims}")
-            return dims
-
-        # Fallback to known dimensions for common models
-        model_dims = {
-            'nomic-embed-text': 768,
-            'mxbai-embed-large': 1024,
-            'bge-large': 1024,
-            'bge-base': 768,
-            'all-minilm': 384,
-            'qwen3-embedding': 1024,
-            'qwen2-embedding': 1024,
-        }
-
-        for model_key, dims in model_dims.items():
-            if model_key in self.embedding_model.lower():
-                logger.info(f"Using known dimensions for {model_key}: {dims}")
-                return dims
-
-        # Default fallback
-        logger.warning(f"Unknown embedding model {self.embedding_model}, defaulting to 768 dimensions")
-        return 768

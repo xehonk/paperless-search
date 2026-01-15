@@ -98,16 +98,3 @@ class BaseProvider(ABC):
             Returns empty list if listing fails
         """
         pass
-
-    @abstractmethod
-    def get_embedding_dimensions(self) -> int:
-        """
-        Get embedding vector dimensions.
-
-        Returns:
-            Number of dimensions in embedding vectors
-
-        Note:
-            May test with a sample embedding if not known statically
-        """
-        pass

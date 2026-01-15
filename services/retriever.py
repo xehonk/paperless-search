@@ -308,7 +308,3 @@ class Retriever:
         except Exception as e:
             logger.warning(f"Failed to convert point to result: {e}")
             return None
-
-    def get_embedding_dimensions(self) -> int:
-        """Get the embedding dimensions from the provider"""
-        return self.provider.get_embedding_dimensions()

@@ -10,7 +10,6 @@ import signal
 import logging
 import schedule
 from indexer import DocumentIndexer
-from retriever import Retriever
 
 # Configure logging
 logging.basicConfig(
@@ -98,17 +97,7 @@ def main():
             require_reviewed=REQUIRE_REVIEWED
         )
 
-        # Initialize Qdrant collection
-        logger.info("Checking Qdrant collection...")
-        retriever = Retriever(
-            qdrant_url=QDRANT_URL,
-            collection_name=QDRANT_COLLECTION,
-            provider=provider
-        )
-        vector_size = retriever.get_embedding_dimensions()
-        indexer.initialize_collection(vector_size)
-
-        logger.info("Indexer initialized successfully")
+        logger.info("Indexer initialized successfully (collection will be created on first document)")
 
     except Exception as e:
         logger.error(f"Failed to initialize indexer: {e}")
