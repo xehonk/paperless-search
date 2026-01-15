@@ -2,6 +2,8 @@
 
 Semantic search for Paperless-ngx using RAG (Retrieval-Augmented Generation). Combines keyword matching with semantic understanding for better document retrieval.
 
+![Paperless Search Interface](images/screenshot.png)
+
 ## Purpose
 
 Traditional keyword search in Paperless requires exact word matches. This implementation uses semantic search to find documents even when search terms differ from document text (e.g., searching "invoice" finds documents containing "bill").
