@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration from environment
 PAPERLESS_URL = os.getenv('PAPERLESS_URL', 'http://localhost:8000')
+PAPERLESS_PUBLIC_URL = os.getenv('PAPERLESS_PUBLIC_URL', '').strip() or PAPERLESS_URL
 PAPERLESS_API_KEY = os.getenv('PAPERLESS_API_KEY')
 
 # Validate required configuration
@@ -522,7 +523,7 @@ async def get_paperless_correspondents():
 async def get_config():
     """Get current configuration"""
     return {
-        "paperless_url": PAPERLESS_URL,
+        "paperless_url": PAPERLESS_PUBLIC_URL,  # Use public URL for UI links
         "embedding_model": EMBEDDING_MODEL,
         "rerank_model": RERANK_MODEL,
         "llm_model": LLM_MODEL,
