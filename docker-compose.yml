@@ -41,7 +41,9 @@ services:
       # Google AI Configuration (for PROVIDER=google)
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_EMBEDDING_MODEL=${GOOGLE_EMBEDDING_MODEL:-gemini-embedding-001}
-      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3-flash-preview}
+      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3.8-flash}
+      - GOOGLE_THINKING_LEVEL=${GOOGLE_THINKING_LEVEL:-}
+      - GOOGLE_THINKING_BUDGET=${GOOGLE_THINKING_BUDGET:-}
 
       # Search Configuration
       - DEFAULT_QUERY_LANGUAGE=${DEFAULT_QUERY_LANGUAGE:-English}
@@ -96,7 +98,9 @@ services:
       # Google AI Configuration (for PROVIDER=google)
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_EMBEDDING_MODEL=${GOOGLE_EMBEDDING_MODEL:-gemini-embedding-001}
-      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3-flash-preview}
+      - GOOGLE_LLM_MODEL=${GOOGLE_LLM_MODEL:-gemini-3.8-flash}
+      - GOOGLE_THINKING_LEVEL=${GOOGLE_THINKING_LEVEL:-}
+      - GOOGLE_THINKING_BUDGET=${GOOGLE_THINKING_BUDGET:-}
 
       # Indexing Configuration
       - POLL_INTERVAL_MINUTES=${POLL_INTERVAL_MINUTES:-5}

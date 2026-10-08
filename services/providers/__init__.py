@@ -52,7 +52,7 @@ def create_provider(
             )
 
         embedding_model = embedding_model or os.getenv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-001')
-        llm_model = llm_model or os.getenv('GOOGLE_LLM_MODEL', 'gemini-3-flash-preview')
+        llm_model = llm_model or os.getenv('GOOGLE_LLM_MODEL', 'gemini-3.8-flash')
 
         logger.info(f"Creating Google provider with embedding={embedding_model}, llm={llm_model}")
 

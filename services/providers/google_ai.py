@@ -2,6 +2,7 @@
 Google AI provider implementation using Gemini models
 """
 
+import os
 import logging
 from typing import List, Optional, Dict, Any
 from google import genai
@@ -18,7 +19,9 @@ class GoogleProvider(BaseProvider):
         self,
         api_key: str,
         embedding_model: str = "gemini-embedding-001",
-        llm_model: str = "gemini-3-flash-preview"
+        llm_model: str = "gemini-3.8-flash",
+        thinking_level: Optional[str] = None,
+        thinking_budget: Optional[int] = None
     ):
         """
         Initialize Google AI provider.
@@ -26,11 +29,18 @@ class GoogleProvider(BaseProvider):
         Args:
             api_key: Google AI API key
             embedding_model: Embedding model (default: gemini-embedding-001, 3072 dims)
-            llm_model: LLM model for generation (default: gemini-3-flash-preview)
+            llm_model: LLM model for generation (default: gemini-3.8-flash)
+            thinking_level: Optional thinking level ("low", "medium", "high")
+            thinking_budget: Optional thinking budget in tokens (0 to disable)
         """
         self.api_key = api_key
         self.embedding_model = embedding_model
         self.llm_model = llm_model
+        tl = thinking_level if thinking_level is not None else os.getenv('GOOGLE_THINKING_LEVEL')
+        self.thinking_level = tl.strip() if tl and tl.strip() else None
+
+        raw_budget = thinking_budget if thinking_budget is not None else os.getenv('GOOGLE_THINKING_BUDGET')
+        self.thinking_budget = int(raw_budget) if raw_budget is not None and str(raw_budget).strip() != "" else None
 
         # Create client
         self.client = genai.Client(api_key=api_key)
@@ -129,39 +139,64 @@ class GoogleProvider(BaseProvider):
         kwargs.pop('top_logprobs', None)
         kwargs.pop('model_override', None)
 
+        # Allow per-call overrides for thinking parameters
+        req_tl = kwargs.pop('thinking_level', self.thinking_level)
+        req_thinking_level = req_tl.strip() if req_tl and str(req_tl).strip() else None
+
+        req_tb = kwargs.pop('thinking_budget', self.thinking_budget)
+        req_thinking_budget = int(req_tb) if req_tb is not None and str(req_tb).strip() != "" else None
+
+        # Build thinking_config if applicable
+        # Google GenAI allows only one of thinking_budget and thinking_level
+        thinking_config = None
+        if req_thinking_budget is not None:
+            thinking_config = types.ThinkingConfig(thinking_budget=req_thinking_budget, include_thoughts=True)
+        elif req_thinking_level is not None:
+            thinking_config = types.ThinkingConfig(thinking_level=req_thinking_level, include_thoughts=True)
+        elif max_tokens < 100:
+            # Low max_tokens (e.g. classification, reranker yes/no) will be starved
+            # by default thinking tokens. Set thinking_budget=0 to ensure answers fit.
+            thinking_config = types.ThinkingConfig(thinking_budget=0)
+
+        config_args = {
+            "temperature": temperature,
+            "max_output_tokens": max_tokens,
+        }
+        if thinking_config is not None:
+            config_args["thinking_config"] = thinking_config
+
         try:
             response = self.client.models.generate_content(
                 model=self.llm_model,
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=temperature,
-                    max_output_tokens=max_tokens,
-                )
+                config=types.GenerateContentConfig(**config_args)
             )
 
-            # Extract text from response, handling thought_signature and other non-text parts
-            # Access candidates.content.parts directly to avoid warning
+            # Extract text and thinking parts from response
             text_parts = []
+            thought_parts = []
             if hasattr(response, 'candidates') and response.candidates:
                 candidate = response.candidates[0]
                 if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
                     parts = candidate.content.parts
-                    # Check that parts is not None before iterating
                     if parts is not None:
                         for part in parts:
-                            # Only include text parts, skip thought_signature and others
                             if hasattr(part, 'text') and part.text:
-                                text_parts.append(part.text)
+                                if getattr(part, 'thought', False):
+                                    thought_parts.append(part.text)
+                                else:
+                                    text_parts.append(part.text)
 
-            # Combine all text parts
+            # Combine parts
             response_text = ''.join(text_parts).strip()
+            thinking_text = ''.join(thought_parts).strip()
 
             # Fallback to response.text if we couldn't extract text
-            if not response_text:
+            if not response_text and not thinking_text:
                 response_text = response.text if hasattr(response, 'text') else ''
 
             # If still no text, log the issue for debugging
-            if not response_text:
+            if not response_text and not thinking_text:
                 logger.warning(f"Empty response from Gemini (may be blocked by safety filters or refusal)")
                 # Check for block reasons
                 if hasattr(response, 'candidates') and response.candidates:
@@ -174,6 +209,7 @@ class GoogleProvider(BaseProvider):
             # Return in Ollama-compatible format
             return {
                 "response": response_text,
+                "thinking": thinking_text,
                 "done": True,
                 "done_reason": "stop"
             }

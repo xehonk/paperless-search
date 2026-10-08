@@ -522,11 +522,14 @@ async def get_paperless_correspondents():
 @app.get("/api/config")
 async def get_config():
     """Get current configuration"""
+    emb_model = getattr(retriever.provider, 'embedding_model', EMBEDDING_MODEL) if retriever and hasattr(retriever, 'provider') else EMBEDDING_MODEL
+    llm_m = getattr(reranker.provider, 'llm_model', LLM_MODEL) if reranker and hasattr(reranker, 'provider') else LLM_MODEL
+    rerank_m = getattr(reranker.provider, 'rerank_model', llm_m) if reranker and hasattr(reranker, 'provider') else RERANK_MODEL
     return {
         "paperless_url": PAPERLESS_PUBLIC_URL,  # Use public URL for UI links
-        "embedding_model": EMBEDDING_MODEL,
-        "rerank_model": RERANK_MODEL,
-        "llm_model": LLM_MODEL,
+        "embedding_model": emb_model,
+        "rerank_model": rerank_m,
+        "llm_model": llm_m,
         "enable_query_expansion": ENABLE_QUERY_EXPANSION,
         "enable_reranking": ENABLE_RERANKING,
         "retrieval_top_k": RETRIEVAL_TOP_K,
